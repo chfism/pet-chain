@@ -9,6 +9,7 @@ from PIL import Image,ImageFile
 import base64
 import os
 import time
+import subprocess
 try:
     from selenium import webdriver
 except ImportError,e:
