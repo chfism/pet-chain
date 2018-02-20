@@ -8,6 +8,7 @@ import ConfigParser
 from PIL import Image,ImageFile
 import base64
 import os
+import time
 try:
     from selenium import webdriver
 except ImportError,e:
@@ -65,18 +66,22 @@ class PetChain():
         try:
             data = {
                 "appId":1,
-                "lastAmount":1,
-                "lastRareDegree":0,
-                "pageNo":1,
-                "pageSize":20,
+                "lastAmount":"",
+                "lastRareDegree":"",
+                #"nounce":0,
+                "pageNo":1, #max 60
+                "pageSize":20, #max 20
                 "petIds":[],
                 "querySortType":"AMOUNT_ASC",
-                "requestId":1517730660382,
+                #"querySortType":"RAREDEGREE_DESC",
+                #"querySortType":"CREATETIME_DESC",
+                "requestId":1518795534897,
+                #"token":"null",
                 "tpl":"",
             }
             page = requests.post("https://pet-chain.baidu.com/data/market/queryPetsOnSale", headers=self.headers, data=json.dumps(data))
             if page.json().get(u"errorMsg") == u"success":
-                print "[->] purchase"
+                print "[->] purchase %s" %time.time()
                 pets = page.json().get(u"data").get("petsOnSale")
                 if model == "ter":
                     for pet in pets:
@@ -84,15 +89,17 @@ class PetChain():
         except Exception,e:
             print e
             pets = []
+            time.sleep(self.interval * 5)
         return pets
 
     def purchase(self, pet):
         try:
+            
             pet_id = pet.get(u"petId")
             pet_amount = pet.get(u"amount")
             pet_degree = pet.get(u"rareDegree")
             pet_validCode = pet.get(u"validCode")
-
+            print "pet_degree %s pet amount %s petId %s" %(pet_degree,pet_amount,pet_id)
             data = {
                 "appId":1,
                 "petId":pet_id,
@@ -103,8 +110,8 @@ class PetChain():
                 "amount":"{}".format(pet_amount),
                 "validCode": pet_validCode
             }
-            #print "Match pet degree:{} amount:{}".format(pet_degree, pet_amount)
             if float(pet_amount) <= self.degree_conf.get(pet_degree):
+                print "pet_degree %s pet amount %s" %(pet_degree,pet_amount)
                 captcha, seed = self.get_captcha()
                 assert captcha and seed, ValueError("验证码为空")
                 data['captcha'] = captcha
@@ -115,8 +122,12 @@ class PetChain():
                 if resp.get(u"errorMsg") != u"验证码错误":
                     os.rename("data/captcha.jpg", "data/captcha_dataset/{}.jpg".format(captcha))
                 print json.dumps(resp, ensure_ascii=False)
+                #等待上链中
+                if resp.get(u"errorMsg") == u"success":
+                    time.sleep(5*60) 
         except Exception,e:
             print e
+            time.sleep(self.interval * 5)
             pass
 
     def login(self):
